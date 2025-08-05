@@ -1,150 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta name="google-site-verification" content="xyBpDE9ID7mTbcoDe-fKQu2uZkpNTj84v7aDVIjd08U" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="description" content="Daily Helper - AI Productivity and Homework Assistant">
-  <title>Daily Helper</title>
+  <meta name="google-site-verification" content="xyBpDE9ID7mTbcoDe-fKQu2uZkpNTj84v7aDVIjd08U" />
+  <title>Daily Helper – AI + Camera</title>
   <style>
     body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #e9f0f7;
-      color: #333;
-    }
-    header {
-      background: #2c3e50;
-      color: white;
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
       padding: 20px;
-      text-align: center;
-      font-size: 32px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      color: #222;
     }
-    main {
-      padding: 30px 20px;
-      max-width: 800px;
+    .container {
+      max-width: 700px;
       margin: auto;
-    }
-    .section {
-      background: white;
+      background: #fff;
       padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    h2 {
-      color: #34495e;
-    }
-    input, textarea {
+    textarea {
       width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      height: 100px;
+      padding: 10px;
       font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
     }
     button {
-      background: #3498db;
-      color: white;
       padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
       font-size: 16px;
+      background-color: #2d89ef;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
     }
-    .console {
+    .output {
       background: #111;
       color: #0f0;
-      font-family: 'Courier New', monospace;
       padding: 15px;
-      border-radius: 5px;
-      height: 200px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
-    .preview {
-      margin-top: 10px;
-      text-align: center;
-    }
-    .preview img {
-      max-width: 100%;
-      max-height: 200px;
-      border: 2px dashed #ccc;
+      margin-top: 15px;
       border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    input[type="file"] {
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Welcome to Daily Helper</h1>
+    <p>Ask any question or upload a homework image:</p>
 
-<header>Welcome to Daily Helper</header>
+    <textarea id="question" placeholder="Type your question here..."></textarea>
+    <button onclick="askAI()">Ask AI</button>
 
-<main>
+    <h3>📸 Upload Homework Image</h3>
+    <input type="file" accept="image/*" onchange="handleImageUpload(event)" />
+    <div id="imagePreview"></div>
 
-  <div class="section">
-    <h2>🧠 Ask the AI</h2>
-    <p>Type your question below and click "Submit"</p>
-    <textarea id="question" rows="3" placeholder="e.g. What is the Pythagorean Theorem?"></textarea>
-    <button onclick="askAI()">Submit</button>
-    <div class="console" id="consoleOutput">> Awaiting input...</div>
+    <div class="output" id="response">Awaiting input...</div>
   </div>
 
-  <div class="section">
-    <h2>📸 Upload Homework Image</h2>
-    <p>Select an image of your question and we'll analyze it for help.</p>
-    <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
-    <div class="preview" id="imagePreview"></div>
-    <button onclick="analyzeImage()">Analyze Image</button>
-    <div class="console" id="imageConsole">> Awaiting image upload...</div>
-  </div>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <script>
+    const apiKey = "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";
 
-</main>
+    async function askAI(questionText) {
+      const question = questionText || document.getElementById("question").value.trim();
+      const responseDiv = document.getElementById("response");
 
-<script>
-  function askAI() {
-    const question = document.getElementById("question").value.trim();
-    const output = document.getElementById("consoleOutput");
-
-    if (!question) {
-      output.textContent += "\n> Please enter a question.";
-      return;
-    }
-
-    output.textContent += `\n> ${question}`;
-    output.textContent += "\n> Thinking...";
-
-    setTimeout(() => {
-      output.textContent += `\n> AI: Here's a helpful explanation of "${question}" (demo response).`;
-    }, 1000);
-  }
-
-  function previewImage(event) {
-    const preview = document.getElementById("imagePreview");
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        preview.innerHTML = `<img src="${e.target.result}" alt="Uploaded Image">`;
+      if (!question) {
+        responseDiv.textContent = "> Please type a question or upload an image.";
+        return;
       }
-      reader.readAsDataURL(file);
+
+      responseDiv.textContent = "> Thinking...";
+
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: question }],
+            temperature: 0.7
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.choices && data.choices.length > 0) {
+          responseDiv.textContent = "> " + data.choices[0].message.content.trim();
+        } else {
+          responseDiv.textContent = "> Sorry, no response received.";
+        }
+      } catch (err) {
+        console.error(err);
+        responseDiv.textContent = "> Error connecting to AI.";
+      }
     }
-  }
 
-  function analyzeImage() {
-    const imageConsole = document.getElementById("imageConsole");
-    const fileInput = document.getElementById("imageInput");
-
-    if (!fileInput.files.length) {
-      imageConsole.textContent += "\n> Please upload an image first.";
-      return;
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      const responseDiv = document.getElementById("response");
+      if (file) {
+        responseDiv.textContent = "> Reading image...";
+        const reader = new FileReader();
+        reader.onload = function() {
+          Tesseract.recognize(
+            reader.result,
+            'eng',
+            { logger: m => console.log(m) }
+          ).then(({ data: { text } }) => {
+            document.getElementById("question").value = text.trim();
+            askAI(text.trim());
+          });
+        };
+        reader.readAsDataURL(file);
+      }
     }
-
-    imageConsole.textContent += "\n> Uploading image...";
-    setTimeout(() => {
-      imageConsole.textContent += "\n> AI: Image received. Here's a demo explanation based on the uploaded image (feature coming soon!).";
-    }, 1500);
-  }
-</script>
-
+  </script>
 </body>
 </html>
