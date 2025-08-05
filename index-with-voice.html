@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="google-site-verification" content="xyBpDE9ID7mTbcoDe-fKQu2uZkpNTj84v7aDVIjd08U" />
+  <title>Daily Helper – AI + Camera + History</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      padding: 20px;
+      color: #222;
+    }
+    .container {
+      max-width: 720px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      background-color: #2d89ef;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .output {
+      background: #111;
+      color: #0f0;
+      padding: 15px;
+      margin-top: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    #history {
+      margin-top: 20px;
+      background: #eef;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    #history h3 {
+      margin-top: 0;
+    }
+    .history-entry {
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .history-entry p {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to Daily Helper</h1>
+    <p>Ask a question, upload an image, or take a photo:</p>
+
+    <textarea id="question" placeholder="Type your question here..."></textarea>
+    <button onclick="startVoiceInput()">🎤 Speak</button>
+    <button onclick="askAI()">Ask AI</button>
+    <button onclick="clearHistory()">🧽 Clear History</button>
+
+    <h3>📸 Upload or Take Photo</h3>
+    <input type="file" accept="image/*" onchange="handleImageUpload(event)" />
+    <button onclick="startCamera()">Take Photo</button>
+    <video id="video" autoplay playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <button id="captureBtn" onclick="capturePhoto()" style="display:none;">Capture</button>
+
+    <div class="output" id="response">Awaiting input...</div>
+
+    <div id="history">
+      <h3>📜 Chat History</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js">function startVoiceInput() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      const responseDiv = document.getElementById("response");
+      responseDiv.textContent = "> Listening...";
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("question").value = transcript;
+        askAI(transcript);
+      };
+
+      recognition.onerror = function(event) {
+        responseDiv.textContent = "> Voice error: " + event.error;
+      };
+
+      recognition.start();
+    }
+    </script>
+  <script>
+    const apiKey = "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";
+
+    function loadHistory() {
+      const historyList = document.getElementById("historyList");
+      const history = JSON.parse(localStorage.getItem("chatHistory") || "[]");
+      historyList.innerHTML = "";
+      history.slice().reverse().forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "history-entry";
+        div.innerHTML = `<p><strong>Q:</strong> ${entry.question}</p><p><strong>A:</strong> ${entry.answer}</p>`;
+        historyList.appendChild(div);
+      });
+    }
+
+    function saveToHistory(question, answer) {
+      const history = JSON.parse(localStorage.getItem("chatHistory") || "[]");
+      history.push({ question, answer });
+      localStorage.setItem("chatHistory", JSON.stringify(history));
+      loadHistory();
+    }
+
+    function clearHistory() {
+      localStorage.removeItem("chatHistory");
+      loadHistory();
+    }
+
+    async function askAI(questionText) {
+      const question = questionText || document.getElementById("question").value.trim();
+      const responseDiv = document.getElementById("response");
+
+      if (!question) {
+        responseDiv.textContent = "> Please type a question or upload/take an image.";
+        return;
+      }
+
+      responseDiv.textContent = "> Thinking...";
+
+      try {
+        const res = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + apiKey
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: question }],
+            temperature: 0.7
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.choices && data.choices.length > 0) {
+          const answer = data.choices[0].message.content.trim();
+          responseDiv.textContent = "> " + answer;
+          saveToHistory(question, answer);
+        } else {
+          responseDiv.textContent = "> Sorry, no response received.";
+        }
+      } catch (err) {
+        console.error(err);
+        responseDiv.textContent = "> Error connecting to AI.";
+      }
+    }
+
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      const responseDiv = document.getElementById("response");
+      if (file) {
+        responseDiv.textContent = "> Reading image...";
+        const reader = new FileReader();
+        reader.onload = function() {
+          Tesseract.recognize(reader.result, 'eng').then(({ data: { text } }) => {
+            document.getElementById("question").value = text.trim();
+            askAI(text.trim());
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function startCamera() {
+      const video = document.getElementById("video");
+      const captureBtn = document.getElementById("captureBtn");
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          video.style.display = "block";
+          captureBtn.style.display = "inline-block";
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          alert("Camera access denied or not supported.");
+          console.error(err);
+        });
+    }
+
+    function capturePhoto() {
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const responseDiv = document.getElementById("response");
+
+      canvas.style.display = "block";
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL("image/png");
+
+      responseDiv.textContent = "> Reading photo...";
+      Tesseract.recognize(imageData, 'eng').then(({ data: { text } }) => {
+        document.getElementById("question").value = text.trim();
+        askAI(text.trim());
+      });
+    }
+
+    loadHistory();
+  function startVoiceInput() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      const responseDiv = document.getElementById("response");
+      responseDiv.textContent = "> Listening...";
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("question").value = transcript;
+        askAI(transcript);
+      };
+
+      recognition.onerror = function(event) {
+        responseDiv.textContent = "> Voice error: " + event.error;
+      };
+
+      recognition.start();
+    }
+    </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        console.log("Service Worker registered.", reg);
+      });
+    }
+  </script>
+</body>
+</html>
